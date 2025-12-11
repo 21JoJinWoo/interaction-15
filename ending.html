@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>체험 종료</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #000;
+            color: #eee;
+            font-family: "Noto Sans KR", sans-serif;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .credits-container {
+            text-align: center;
+            animation: scrollUp 35s linear forwards;
+            position: relative;
+            top: 100%;
+        }
+
+        @keyframes scrollUp {
+            0% {
+                top: 100%;
+                opacity: 0;
+            }
+
+            5% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 1;
+            }
+
+            100% {
+                top: -150%;
+                /* Adjusted for longer content */
+                opacity: 0;
+            }
+        }
+
+        h1 {
+            font-size: 32px;
+            color: #FFFF00;
+            margin-bottom: 60px;
+            font-weight: 700;
+        }
+
+        .role {
+            font-size: 16px;
+            color: #FFFF00;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .name {
+            font-size: 24px;
+            color: #fff;
+            margin-bottom: 50px;
+            font-weight: 300;
+        }
+
+        .chapter-section {
+            margin-bottom: 60px;
+            padding: 0 20px;
+        }
+
+        .chapter-title {
+            font-size: 20px;
+            color: #FFFF00;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .chapter-desc {
+            font-size: 16px;
+            color: #ccc;
+            line-height: 1.6;
+            font-weight: 300;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .message {
+            font-size: 20px;
+            line-height: 1.6;
+            margin-top: 100px;
+            color: #ccc;
+        }
+
+        .final-logo {
+            margin-top: 80px;
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="credits-container">
+        <h1>만든 사람들</h1>
+
+        <div class="credit-section">
+            <div class="role">기획 및 디자인</div>
+            <div class="name">조진우</div>
+        </div>
+
+        <div class="credit-section">
+            <div class="role">개발</div>
+            <div class="name">조진우</div>
+        </div>
+
+        <div style="height: 50px;"></div>
+
+        <div class="chapter-section">
+            <div class="chapter-title">Chapter 1. 시각장애</div>
+            <div class="chapter-desc">
+                어둠 속에서 오직 청각에 의존해야 하는 막막함과,<br>
+                평범한 웹 서핑조차 거대한 장벽이 되는 경험.
+            </div>
+        </div>
+
+        <div class="chapter-section">
+            <div class="chapter-title">Chapter 2. 청각장애</div>
+            <div class="chapter-desc">
+                소리가 배제된 세상에서의 고립감,<br>
+                그리고 시각 정보에만 의존해야 하는 단절된 소통의 경험.
+            </div>
+        </div>
+
+        <div class="chapter-section">
+            <div class="chapter-title">Chapter 3. 지체장애 및 색각이상</div>
+            <div class="chapter-desc">
+                내 마음대로 움직이지 않는 신체의 부자유함과,<br>
+                남들과 다른 색으로 세상을 바라보는 낯선 경험.
+            </div>
+        </div>
+
+        <div class="message">
+            평범한 일상 속 비주류가 되는 경험<br>
+            체험해 주셔서 감사합니다.
+        </div>
+
+        <div class="final-logo">
+            2025 Web Interaction Design Final Project
+        </div>
+    </div>
+
+    <script>
+        // Optional: Redirect to index or close window after animation
+        // setTimeout(() => {
+        //     window.location.href = 'index.html';
+        // }, 16000); 
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Resume background music if it was playing
+            const bgmPlaying = sessionStorage.getItem('bgmPlaying');
+            const bgmTime = sessionStorage.getItem('bgmTime');
+
+            if (bgmPlaying === 'true' && bgmTime) {
+                const bgm = new Audio('ravel.mp3');
+                bgm.loop = true;
+                bgm.currentTime = parseFloat(bgmTime);
+                bgm.play().catch(e => console.log("Audio resume failed:", e));
+            }
+
+            // Typing sounds
+            let currentKeySound = 1;
+            const key1 = new Audio('key_1.wav');
+            const key2 = new Audio('key_2.wav');
+
+            function playTypingSound() {
+                const soundToPlay = currentKeySound === 1 ? key1 : key2;
+                soundToPlay.cloneNode().play().catch(e => console.log("Audio play failed:", e));
+                currentKeySound = currentKeySound === 1 ? 2 : 1;
+            }
+
+            window.addEventListener('keydown', () => {
+                playTypingSound();
+            });
+        }); 
+    </script>
+
+</body>
+
+</html>

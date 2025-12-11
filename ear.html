@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>청각장애인이 주류가 되는 경험</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <style>
+        .noto-sans-kr-<uniquifier> {
+            font-family: "Noto Sans KR", sans-serif;
+            font-optical-sizing: auto;
+            font-weight: <weight>;
+            font-style: normal;
+        }
+
+        * {
+            word-break: keep-all;
+        }
+
+        body {
+            background-color: #000;
+            color: #eee;
+            font-family: "Noto Sans KR", sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            cursor: none;
+            padding-top: 0;
+            transition: background-color 0.3s ease;
+        }
+
+        body.mediapipe-active {
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #webcam-container {
+            display: none;
+            width: 50%;
+            height: 100vh;
+            position: relative;
+            background-color: #000;
+            overflow: hidden;
+            flex-direction: column;
+        }
+
+        body.mediapipe-active #webcam-container {
+            display: flex;
+        }
+
+        #video-feed-wrapper {
+            width: 100%;
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+            background-color: #111;
+        }
+
+        #webcam,
+        #output-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+            object-fit: cover;
+        }
+
+        #webcam {
+            visibility: hidden;
+        }
+
+        /* 경고 문구: 흰색(#ffffff) */
+        #error-overlay {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: 600;
+            z-index: 100;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
+            display: none;
+            animation: blink-white 1s infinite;
+            white-space: nowrap;
+        }
+
+        @keyframes blink-white {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        #hand-guide-container {
+            width: 100%;
+            flex-shrink: 0;
+            background-color: #050505;
+            padding: 20px 0;
+            box-sizing: border-box;
+            visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #example-images {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 15px;
+            min-height: 120px;
+            flex-wrap: wrap;
+        }
+
+        /* HELLO 박스 스타일 */
+        .sign-letter-box {
+            width: 80px;
+            height: 110px;
+            border: 2px dashed #ffffff;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #ffffff;
+            opacity: 0.4;
+            transition: all 0.3s ease;
+            padding: 5px;
+        }
+
+        .sign-letter-box.active {
+            opacity: 1;
+            border-style: solid;
+            border-width: 3px;
+            border-color: #FFFF00;
+            color: #FFFF00;
+            background-color: rgba(255, 255, 0, 0.15);
+            transform: scale(1.15);
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.3);
+        }
+
+        .sign-letter-box.completed {
+            opacity: 0.8;
+            border-color: #FFFF00;
+            color: #FFFF00;
+            background-color: rgba(255, 255, 0, 0.1);
+        }
+
+        .sign-graphic {
+            font-size: 40px;
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .sign-desc {
+            font-size: 13px;
+            text-align: center;
+            word-break: keep-all;
+            line-height: 1.2;
+            font-weight: 500;
+            padding-top: 4px;
+        }
+
+        .example-image-placeholder {
+            width: 120px;
+            height: 120px;
+            border: 2px dashed #FFFF00;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .example-emoji {
+            font-size: 80px;
+            line-height: 1;
+        }
+
+        #guide-text {
+            text-align: center;
+            color: #ffffff;
+            font-size: 22px;
+            font-weight: 500;
+        }
+
+        #content-wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        body.mediapipe-active #content-wrapper {
+            width: 50%;
+            height: 100vh;
+            flex-shrink: 0;
+            background-color: #0a0a0a;
+        }
+
+        #librarian-label {
+            display: none;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            color: #aaa;
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: -15px;
+        }
+
+        body.mediapipe-active #librarian-label {
+            display: block;
+        }
+
+        .page-title {
+            font-size: 45px;
+            font-weight: 400;
+            color: #FFFF00;
+            margin-bottom: 20px;
+            min-height: 90px;
+            position: relative;
+            text-align: center;
+            width: 90vw;
+            max-width: 1000px;
+        }
+
+        body.mediapipe-active .page-title {
+            font-size: 30px;
+            min-height: 0px;
+            width: 90%;
+            max-width: 500px;
+            margin-bottom: -10px;
+        }
+
+        .page-title.typing-cursor::after {
+            content: '|';
+            display: inline-block;
+            animation: blink 1s infinite;
+            color: #FFFF00;
+            font-weight: 700;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .main-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 30px;
+            padding: 0px;
+            transform: scale(0.666);
+            transition: transform 0.5s ease;
+        }
+
+        body.mediapipe-active .main-container {
+            transform: scale(0.6);
+            transform-origin: center center;
+        }
+
+        .keyboard-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 20px;
+            border: 1.5px solid #fff;
+            border-radius: 10px;
+            transition: border-color 0.3s ease;
+        }
+
+        .keyboard-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        .key {
+            width: 40px;
+            height: 40px;
+            border: 1.5px solid #fff;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            font-weight: 500;
+            box-sizing: border-box;
+            transition: opacity 0.3s ease, background-color 0.1s, color 0.1s;
+        }
+
+        .key.active {
+            background-color: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+
+        .trackpad-container {
+            width: 280px;
+            height: 220px;
+            border: 1.5px solid #fff;
+            border-radius: 10px;
+            margin-top: 0px;
+            position: relative;
+            overflow: hidden;
+            transition: opacity 0.3s ease, border-color 0.3s ease;
+        }
+
+        .trackpad-cursor {
+            width: 20px;
+            height: 20px;
+            background-color: #fff;
+            border-radius: 50%;
+            position: absolute;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 1s ease, visibility 1s ease;
+        }
+
+        .trackpad-cursor.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .arrow-key-cluster {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .arrow-key-row {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .key.empty {
+            border: none;
+            visibility: hidden;
+        }
+
+        #left-arrow-key {
+            transform: rotate(180deg);
+        }
+
+        .global-nav {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+            display: flex;
+            gap: 15px;
+            pointer-events: none;
+            font-family: "Noto Sans KR", sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="global-nav">
+        <span>[1] 시각장애인</span>
+        <span>[2] 청각장애인</span>
+        <span>[3] 지체장애인+색각이상자</span>
+    </div>
+
+    <div id="content-wrapper">
+        <div id="librarian-label">사서:</div>
+        <h1 class="page-title" id="pageTitle"></h1>
+        <div class="main-container">
+            <div class="keyboard-container">
+                <div class="keyboard-row">
+                    <div class="key" data-code="Escape">ESC</div>
+                    <div class="key" data-code="F1">F1</div>
+                    <div class="key" data-code="F2">F2</div>
+                    <div class="key" data-code="F3">F3</div>
+                    <div class="key" data-code="F4">F4</div>
+                    <div class="key" data-code="F5">F5</div>
+                    <div class="key" data-code="F6">F6</div>
+                    <div class="key" data-code="F7">F7</div>
+                    <div class="key" data-code="F8">F8</div>
+                    <div class="key" data-code="F9">F9</div>
+                    <div class="key" data-code="F10">F10</div>
+                    <div class="key" data-code="F11">F11</div>
+                    <div class="key" data-code="F12">F12</div>
+                    <div class="key" data-code="Power">⏻</div>
+                </div>
+                <div class="keyboard-row">
+                    <div class="key" data-code="Backquote">` ~</div>
+                    <div class="key" data-code="Digit1">1 !</div>
+                    <div class="key" data-code="Digit2">2 @</div>
+                    <div class="key" data-code="Digit3">3 #</div>
+                    <div class="key" data-code="Digit4">4 $</div>
+                    <div class="key" data-code="Digit5">5 %</div>
+                    <div class="key" data-code="Digit6">6 ^</div>
+                    <div class="key" data-code="Digit7">7 &</div>
+                    <div class="key" data-code="Digit8">8 *</div>
+                    <div class="key" data-code="Digit9">9 (</div>
+                    <div class="key" data-code="Digit0">0 )</div>
+                    <div class="key" data-code="Minus">- _</div>
+                    <div class="key" data-code="Equal">= +</div>
+                    <div class="key" data-code="Backspace" style="width: 88px;">DELETE</div>
+                </div>
+                <div class="keyboard-row">
+                    <div class="key" data-code="Tab" style="width: 88px;">TAB</div>
+                    <div class="key" data-code="KeyQ">Q</div>
+                    <div class="key" data-code="KeyW">W</div>
+                    <div class="key" data-code="KeyE">E</div>
+                    <div class="key" data-code="KeyR">R</div>
+                    <div class="key" data-code="KeyT">T</div>
+                    <div class="key" data-code="KeyY">Y</div>
+                    <div class="key" data-code="KeyU">U</div>
+                    <div class="key" data-code="KeyI">I</div>
+                    <div class="key" data-code="KeyO">O</div>
+                    <div class="key" data-code="KeyP">P</div>
+                    <div class="key" data-code="BracketLeft">[ {</div>
+                    <div class="key" data-code="BracketRight">] }</div>
+                    <div class="key" data-code="Backslash">\ |</div>
+                </div>
+                <div class="keyboard-row">
+                    <div class="key" data-code="CapsLock" style="width: 108px;">CAPS</div>
+                    <div class="key" data-code="KeyA">A</div>
+                    <div class="key" data-code="KeyS">S</div>
+                    <div class="key" data-code="KeyD">D</div>
+                    <div class="key" data-code="KeyF">F</div>
+                    <div class="key" data-code="KeyG">G</div>
+                    <div class="key" data-code="KeyH">H</div>
+                    <div class="key" data-code="KeyJ">J</div>
+                    <div class="key" data-code="KeyK">K</div>
+                    <div class="key" data-code="KeyL">L</div>
+                    <div class="key" data-code="Semicolon">; :</div>
+                    <div class="key" data-code="Quote">' "</div>
+                    <div class="key" data-code="Enter" style="width: 88px;">ENTER</div>
+                </div>
+                <div class="keyboard-row">
+                    <div class="key" data-code="ShiftLeft" style="width: 138px;">SHIFT</div>
+                    <div class="key" data-code="KeyZ">Z</div>
+                    <div class="key" data-code="KeyX">X</div>
+                    <div class="key" data-code="KeyC">C</div>
+                    <div class="key" data-code="KeyV">V</div>
+                    <div class="key" data-code="KeyB">B</div>
+                    <div class="key" data-code="KeyN">N</div>
+                    <div class="key" data-code="KeyM">M</div>
+                    <div class="key" data-code="Comma">, &lt;</div>
+                    <div class="key" data-code="Period">. &gt;</div>
+                    <div class="key" data-code="Slash">/ ?</div>
+                    <div class="key" data-code="ShiftRight" style="width: 108px;">SHIFT</div>
+                </div>
+                <div class="keyboard-row">
+                    <div class="key" data-code="Fn">fn</div>
+                    <div class="key" data-code="ControlLeft">ctrl</div>
+                    <div class="key" data-code="AltLeft">opt</div>
+                    <div class="key" data-code="MetaLeft" style="width: 50px;">cmd</div>
+                    <div class="key" data-code="Space" style="width: 236px;"></div>
+                    <div class="key" data-code="MetaRight" style="width: 50px;">cmd</div>
+                    <div class="key" data-code="AltRight">opt</div>
+                    <div class="key" data-code="Lang1">한/영</div>
+                    <div class="arrow-key-cluster">
+                        <div class="arrow-key-row">
+                            <div class="key empty" style="width: 40px;"></div>
+                            <div class="key" data-code="ArrowUp">▲</div>
+                            <div class="key empty" style="width: 40px;"></div>
+                        </div>
+                        <div class="arrow-key-row">
+                            <div class="key" data-code="ArrowLeft" id="left-arrow-key">►</div>
+                            <div class="key" data-code="ArrowDown">▼</div>
+                            <div class="key" data-code="ArrowRight">►</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="trackpad-container" id="trackpad">
+                <div class="trackpad-cursor" id="cursor"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="webcam-container">
+        <div id="video-feed-wrapper">
+            <video id="webcam"></video>
+            <canvas id="output-canvas"></canvas>
+            <div id="error-overlay">올바른 수어를 사용해 주세요.</div>
+        </div>
+        <div id="hand-guide-container">
+            <div id="example-images">
+            </div>
+            <div id="guide-text"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            window.addEventListener('keydown', (e) => {
+                playTypingSound();
+                if (e.key === '1' || e.key === '2' || e.key === '3') {
+                    if (bgm) {
+                        bgm.pause();
+                        sessionStorage.setItem('bgmTime', bgm.currentTime);
+                        sessionStorage.setItem('bgmPlaying', 'true');
+                    }
+                }
+
+                if (e.key === '1') window.location.href = 'index.html';
+                if (e.key === '2') window.location.href = 'ear.html';
+                if (e.key === '3') window.location.href = 'color.html';
+            });
+
+            let bgm = null;
+            // Resume background music if it was playing
+            const bgmPlaying = sessionStorage.getItem('bgmPlaying');
+            const bgmTime = sessionStorage.getItem('bgmTime');
+
+            if (bgmPlaying === 'true' && bgmTime) {
+                bgm = new Audio('ravel.mp3');
+                bgm.loop = true;
+                bgm.currentTime = parseFloat(bgmTime);
+                bgm.play().catch(e => console.log("Audio resume failed:", e));
+            }
+
+            // Typing sounds
+            let currentKeySound = 1;
+            const key1 = new Audio('key_1.wav');
+            const key2 = new Audio('key_2.wav');
+
+            function playTypingSound() {
+                const soundToPlay = currentKeySound === 1 ? key1 : key2;
+                soundToPlay.cloneNode().play().catch(e => console.log("Audio play failed:", e));
+                currentKeySound = currentKeySound === 1 ? 2 : 1;
+            }
+
+            let isTyping = false;
+            let currentPage = 1;
+            const storyPages = [
+                "도서관에 도착했습니다.<br>수어를 사용해 사서에게 책을 빌리십시오.",
+                ""
+            ];
+
+            const titleElement = document.getElementById('pageTitle');
+            const handGuideContainer = document.getElementById('hand-guide-container');
+            const exampleImages = document.getElementById('example-images');
+            const guideText = document.getElementById('guide-text');
+            const errorOverlay = document.getElementById('error-overlay');
+
+            let currentSignState = 'idle';
+            let isErrorActive = false;
+
+            // HELLO 가이드
+            const helloGuide = [
+                { char: 'H', emoji: '✌️', desc: '검지,중지 펴기', image: 'v.png', textPosition: 'top' },
+                { char: 'E', emoji: '✊', desc: '주먹 쥐기', image: 'rock.png', textPosition: 'top' },
+                { char: 'L', emoji: '👆', desc: '엄지,검지 ㄴ자', image: 'L.png', textPosition: 'top' },
+                { char: 'L', emoji: '👆', desc: '엄지,검지 ㄴ자', image: 'L.png', textPosition: 'top' },
+                { char: 'O', emoji: '👌', desc: '손가락 둥글게', image: 'okay.png', textPosition: 'top' }
+            ];
+            let helloIndex = 0;
+
+            // BORROW 가이드
+            const borrowGuide = [
+                { char: 'B', emoji: '🖐️', desc: '손바닥 펴기', image: 'hand.png', textPosition: 'top' },
+                { char: 'O', emoji: '👌', desc: '손가락 둥글게', image: 'okay.png', textPosition: 'top' },
+                { char: 'R', emoji: '🤞', desc: '검지,중지 교차', image: 'hart.png', textPosition: 'top' },
+                { char: 'R', emoji: '🤞', desc: '검지,중지 교차', image: 'hart.png', textPosition: 'top' },
+                { char: 'O', emoji: '👌', desc: '손가락 둥글게', image: 'okay.png', textPosition: 'top' },
+                { char: 'W', emoji: '🖖', desc: '세 손가락 펴기', image: '3.png', textPosition: 'top' }
+            ];
+            let borrowIndex = 0;
+
+            // LITERATURE 가이드
+            const literatureGuide = [
+                { char: 'L', emoji: '👆', desc: '엄지,검지 ㄴ자', image: 'L.png', textPosition: 'top' },
+                { char: 'I', emoji: '🤙', desc: '새끼손가락 펴기', image: 'little.png', textPosition: 'top' },
+                { char: 'T', emoji: '☝️', desc: '검지 펴기', image: '1.png', textPosition: 'top' },
+                { char: 'E', emoji: '✊', desc: '주먹 쥐기', image: 'rock.png', textPosition: 'top' },
+                { char: 'R', emoji: '🤞', desc: '검지,중지 교차', image: 'hart.png', textPosition: 'top' },
+                { char: 'A', emoji: '👍', desc: '엄지 척', image: 'thumb.png', textPosition: 'top' },
+                { char: 'T', emoji: '☝️', desc: '검지 펴기', image: '1.png', textPosition: 'top' },
+                { char: 'U', emoji: '✌️', desc: '검지,중지 펴기', image: 'v.png', textPosition: 'top' },
+                { char: 'R', emoji: '🤞', desc: '검지,중지 교차', image: 'hart.png', textPosition: 'top' },
+                { char: 'E', emoji: '✊', desc: '주먹 쥐기', image: 'rock.png', textPosition: 'top' }
+            ];
+            let literatureIndex = 0;
+
+            // HERE 가이드
+            const hereGuide = [
+                { char: 'H', emoji: '✌️', desc: '검지,중지 펴기', image: 'v.png', textPosition: 'top' },
+                { char: 'E', emoji: '✊', desc: '주먹 쥐기', image: 'rock.png', textPosition: 'top' },
+                { char: 'R', emoji: '🤞', desc: '검지,중지 교차', image: 'hart.png', textPosition: 'top' },
+                { char: 'E', emoji: '✊', desc: '주먹 쥐기', image: 'rock.png', textPosition: 'top' }
+            ];
+            let hereIndex = 0;
+
+            // 1WEEK 가이드 (1-W-E-E-K)
+            const oneWeekGuide = [
+                { char: '1', emoji: '☝️', desc: '검지 펴기', image: '1.png', textPosition: 'top' },
+                { char: 'W', emoji: '🖖', desc: '세 손가락 펴기', image: '3.png', textPosition: 'top' },
+                { char: 'E', emoji: '✊', desc: '주먹 쥐기', image: 'rock.png', textPosition: 'top' },
+                { char: 'E', emoji: '✊', desc: '주먹 쥐기', image: 'rock.png', textPosition: 'top' },
+                { char: 'K', emoji: '✌️', desc: '검지,중지 펴기', image: 'v.png', textPosition: 'top' }
+            ];
+            let oneWeekIndex = 0;
+
+            titleElement.classList.add('typing-cursor');
+
+            let typeTimeout;
+            function startTypewriter(text, onCompleteCallback) {
+                clearTimeout(typeTimeout);
+                titleElement.innerHTML = '';
+                if (text) {
+                    titleElement.classList.add('typing-cursor');
+                }
+                isTyping = true;
+                let index = 0;
+
+                function typeChar() {
+                    if (text && index < text.length) {
+                        if (text.substring(index, index + 4) === '<br>') {
+                            titleElement.innerHTML += '<br>';
+                            index += 4;
+                        } else {
+                            titleElement.innerHTML += text.charAt(index);
+                            index++;
+                        }
+                        typeTimeout = setTimeout(typeChar, 100);
+                    } else {
+                        titleElement.classList.remove('typing-cursor');
+                        isTyping = false;
+                        if (onCompleteCallback) {
+                            onCompleteCallback();
+                        }
+                    }
+                }
+                typeChar();
+            }
+
+            function triggerError() {
+                if (isErrorActive) return;
+
+                isErrorActive = true;
+                errorOverlay.style.display = 'block';
+
+                setTimeout(() => {
+                    errorOverlay.style.display = 'none';
+                    isErrorActive = false;
+                }, 1500);
+            }
+
+            function renderBoxes(guideData, currentIndex) {
+                const pageSize = 6;
+                const pageIndex = Math.floor(currentIndex / pageSize);
+                const start = pageIndex * pageSize;
+                const end = Math.min(start + pageSize, guideData.length);
+
+                let html = '';
+                for (let i = start; i < end; i++) {
+                    let classes = 'sign-letter-box';
+                    if (i < currentIndex) classes += ' completed';
+                    else if (i === currentIndex) classes += ' active';
+
+                    const item = guideData[i];
+                    let content = '';
+
+                    if (item.image) {
+                        // 이미지가 있는 경우
+                        if (item.textPosition === 'top') {
+                            content = `
+                                <div class="sign-desc" style="margin-bottom: 5px;">${item.desc}</div>
+                                <img src="${item.image}" class="sign-graphic-img" style="width: 100%; height: 80px; object-fit: contain;">
+                            `;
+                        } else {
+                            content = `
+                                <img src="${item.image}" class="sign-graphic-img" style="width: 100%; height: 80px; object-fit: contain;">
+                                <div class="sign-desc">${item.desc}</div>
+                            `;
+                        }
+                    } else {
+                        // 이모지만 있는 경우 (기존 방식)
+                        content = `
+                            <div class="sign-graphic">${item.emoji}</div>
+                            <div class="sign-desc">${item.desc}</div>
+                        `;
+                    }
+
+                    html += `<div class="${classes}" id="box-${i}">
+                        ${content}
+                    </div>`;
+                }
+                exampleImages.innerHTML = html;
+            }
+
+            function startSignScene(sceneName) {
+                if (isTyping) {
+                    clearTimeout(typeTimeout);
+                    isTyping = false;
+                    titleElement.classList.remove('typing-cursor');
+                }
+
+                handGuideContainer.style.visibility = 'hidden';
+                exampleImages.innerHTML = '';
+
+                if (sceneName === 'hello') {
+                    currentSignState = 'awaiting_hello';
+                    helloIndex = 0;
+                    startTypewriter("안녕하세요. 무엇을 도와드릴까요?", null);
+
+                    renderBoxes(helloGuide, helloIndex);
+                    guideText.textContent = "안녕하세요.";
+                    handGuideContainer.style.visibility = 'visible';
+
+                } else if (sceneName === 'what_next') {
+                    currentSignState = 'awaiting_borrow';
+                    borrowIndex = 0;
+                    startTypewriter("무슨 일로 오셨나요?", null);
+
+                    renderBoxes(borrowGuide, borrowIndex);
+                    guideText.textContent = "책을 빌리러 왔습니다.";
+                    handGuideContainer.style.visibility = 'visible';
+
+                } else if (sceneName === 'book_title') {
+                    currentSignState = 'awaiting_literature';
+                    literatureIndex = 0;
+                    startTypewriter("어떤 책을 찾으시나요?", null);
+
+                    renderBoxes(literatureGuide, literatureIndex);
+                    guideText.textContent = "문학책을 찾고 있습니다.";
+                    handGuideContainer.style.visibility = 'visible';
+
+                } else if (sceneName === 'found_literature') {
+                    currentSignState = 'awaiting_here_it_is';
+                    hereIndex = 0;
+                    startTypewriter("네, 문학책은 2층 종합자료실 안쪽 창가에 '800 문학'이라고 크게 적혀있는 책꽂이에 있습니다.", null);
+
+                    renderBoxes(hereGuide, hereIndex);
+                    guideText.textContent = "여기있습니다.";
+                    handGuideContainer.style.visibility = 'visible';
+
+                } else if (sceneName === 'how_long') {
+                    currentSignState = 'awaiting_one_week';
+                    oneWeekIndex = 0;
+                    startTypewriter("몇주 대출을 희망하세요?", null);
+
+                    renderBoxes(oneWeekGuide, oneWeekIndex);
+                    guideText.textContent = "1주일이요.";
+                    handGuideContainer.style.visibility = 'visible';
+
+                } else if (sceneName === 'checkout_complete') {
+                    currentSignState = 'idle';
+                    startTypewriter("네. 대출 완료됐습니다. 감사합니다.", () => {
+                        if (bgm) {
+                            bgm.pause();
+                            sessionStorage.setItem('bgmTime', bgm.currentTime);
+                            sessionStorage.setItem('bgmPlaying', 'true');
+                        }
+                        window.location.href = 'color.html';
+                    });
+
+                    exampleImages.innerHTML = '';
+                    guideText.textContent = "";
+                    handGuideContainer.style.visibility = 'hidden';
+                }
+            }
+
+            // ---- Hand Shape Recognition Logics ----
+
+            function isSignH(landmarks) {
+                if (!landmarks) return false;
+                return (landmarks[8].y < landmarks[6].y) &&
+                    (landmarks[12].y < landmarks[10].y) &&
+                    (landmarks[16].y > landmarks[14].y) &&
+                    (landmarks[20].y > landmarks[18].y);
+            }
+
+            function isSignE(landmarks) {
+                if (!landmarks) return false;
+                return (landmarks[8].y > landmarks[6].y) &&
+                    (landmarks[12].y > landmarks[10].y) &&
+                    (landmarks[16].y > landmarks[14].y) &&
+                    (landmarks[20].y > landmarks[18].y);
+            }
+
+            function isSignL(landmarks) {
+                if (!landmarks) return false;
+                return (landmarks[8].y < landmarks[6].y) &&
+                    (landmarks[12].y > landmarks[10].y) &&
+                    (landmarks[16].y > landmarks[14].y) &&
+                    (landmarks[20].y > landmarks[18].y);
+            }
+
+            function isSignO(landmarks) {
+                if (!landmarks) return false;
+                const dx = landmarks[8].x - landmarks[4].x;
+                const dy = landmarks[8].y - landmarks[4].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                return dist < 0.1;
+            }
+
+            function isSignB(landmarks) {
+                if (!landmarks) return false;
+                return (landmarks[8].y < landmarks[6].y) &&
+                    (landmarks[12].y < landmarks[10].y) &&
+                    (landmarks[16].y < landmarks[14].y) &&
+                    (landmarks[20].y < landmarks[18].y);
+            }
+
+            function isSignW(landmarks) {
+                if (!landmarks) return false;
+                return (landmarks[8].y < landmarks[6].y) &&
+                    (landmarks[12].y < landmarks[10].y) &&
+                    (landmarks[16].y < landmarks[14].y) &&
+                    (landmarks[20].y > landmarks[18].y);
+            }
+
+            function isSignI(landmarks) {
+                if (!landmarks) return false;
+                return (landmarks[8].y > landmarks[6].y) &&
+                    (landmarks[12].y > landmarks[10].y) &&
+                    (landmarks[16].y > landmarks[14].y) &&
+                    (landmarks[20].y < landmarks[18].y);
+            }
+
+            function isSignA(landmarks) {
+                if (!landmarks) return false;
+                return (landmarks[4].y < landmarks[3].y) &&
+                    (landmarks[8].y > landmarks[6].y) &&
+                    (landmarks[12].y > landmarks[10].y);
+            }
+
+            // Reused gestures
+            function isHandOpen(landmarks) {
+                return isSignB(landmarks);
+            }
+
+            function isFist(landmarks) {
+                return isSignE(landmarks);
+            }
+
+            function isPointing(landmarks) {
+                if (!landmarks) return false;
+                return (landmarks[8].y < landmarks[6].y) &&
+                    (landmarks[12].y > landmarks[10].y) &&
+                    (landmarks[16].y > landmarks[14].y) &&
+                    (landmarks[20].y > landmarks[18].y);
+            }
+
+            async function requestCameraPermission() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    stream.getTracks().forEach(track => track.stop());
+                    initMediaPipe();
+                } catch (err) {
+                    console.error("Camera permission denied:", err);
+                    alert("수어 인식을 사용하려면 카메라 권한이 필요합니다. 페이지를 새로고침하고 권한을 허용해주세요.");
+                }
+            }
+
+            function initMediaPipe() {
+                document.body.classList.add('mediapipe-active');
+
+                const videoElement = document.getElementById('webcam');
+                const canvasElement = document.getElementById('output-canvas');
+                const canvasCtx = canvasElement.getContext('2d');
+
+                let sequenceCooldown = false;
+
+                function onResults(results) {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+
+                    canvasCtx.save();
+                    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+                    canvasCtx.filter = 'blur(20px)';
+                    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+                    canvasCtx.filter = 'none';
+
+                    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                        for (const landmarks of results.multiHandLandmarks) {
+                            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 5 });
+                            drawLandmarks(canvasCtx, landmarks, { color: '#FF0000', lineWidth: 2 });
+                        }
+
+                        const firstHand = results.multiHandLandmarks[0];
+
+                        if (isTyping || currentSignState === 'idle' || isErrorActive) {
+                            canvasCtx.restore();
+                            return;
+                        }
+
+                        // --- SEQUENCE LOGIC FOR HELLO ---
+                        if (currentSignState === 'awaiting_hello') {
+                            if (sequenceCooldown) { canvasCtx.restore(); return; }
+
+                            const targetLetter = helloGuide[helloIndex].char;
+                            let matched = false;
+
+                            if (targetLetter === 'H' && isSignH(firstHand)) matched = true;
+                            else if (targetLetter === 'E' && isSignE(firstHand)) matched = true;
+                            else if (targetLetter === 'L' && isSignL(firstHand)) matched = true;
+                            else if (targetLetter === 'O' && isSignO(firstHand)) matched = true;
+
+                            if (matched) {
+                                helloIndex++;
+                                renderBoxes(helloGuide, helloIndex);
+
+                                sequenceCooldown = true;
+                                setTimeout(() => sequenceCooldown = false, 1000);
+
+                                if (helloIndex >= helloGuide.length) {
+                                    currentSignState = 'idle';
+                                    setTimeout(() => startSignScene('what_next'), 500);
+                                }
+                            } else {
+                                if (!sequenceCooldown) {
+                                    triggerError();
+                                    sequenceCooldown = true;
+                                    setTimeout(() => sequenceCooldown = false, 2000);
+                                }
+                            }
+                        }
+
+                        // --- SEQUENCE LOGIC FOR BORROW ---
+                        else if (currentSignState === 'awaiting_borrow') {
+                            if (sequenceCooldown) { canvasCtx.restore(); return; }
+
+                            const targetLetter = borrowGuide[borrowIndex].char;
+                            let matched = false;
+
+                            if (targetLetter === 'B' && isSignB(firstHand)) matched = true;
+                            else if (targetLetter === 'O' && isSignO(firstHand)) matched = true;
+                            else if (targetLetter === 'R' && isSignH(firstHand)) matched = true;
+                            else if (targetLetter === 'W' && isSignW(firstHand)) matched = true;
+
+                            if (matched) {
+                                borrowIndex++;
+                                renderBoxes(borrowGuide, borrowIndex);
+
+                                sequenceCooldown = true;
+                                setTimeout(() => sequenceCooldown = false, 1000);
+
+                                if (borrowIndex >= borrowGuide.length) {
+                                    currentSignState = 'idle';
+                                    setTimeout(() => startSignScene('book_title'), 500);
+                                }
+                            } else {
+                                if (!sequenceCooldown) {
+                                    triggerError();
+                                    sequenceCooldown = true;
+                                    setTimeout(() => sequenceCooldown = false, 2000);
+                                }
+                            }
+                        }
+
+                        // --- SEQUENCE LOGIC FOR LITERATURE ---
+                        else if (currentSignState === 'awaiting_literature') {
+                            if (sequenceCooldown) { canvasCtx.restore(); return; }
+
+                            const targetLetter = literatureGuide[literatureIndex].char;
+                            let matched = false;
+
+                            if (targetLetter === 'L' && isSignL(firstHand)) matched = true;
+                            else if (targetLetter === 'I' && isSignI(firstHand)) matched = true;
+                            else if (targetLetter === 'T' && isPointing(firstHand)) matched = true;
+                            else if (targetLetter === 'E' && isSignE(firstHand)) matched = true;
+                            else if (targetLetter === 'R' && isSignH(firstHand)) matched = true;
+                            else if (targetLetter === 'A' && isSignA(firstHand)) matched = true;
+                            else if (targetLetter === 'U' && isSignH(firstHand)) matched = true;
+
+                            if (matched) {
+                                literatureIndex++;
+                                renderBoxes(literatureGuide, literatureIndex);
+
+                                sequenceCooldown = true;
+                                setTimeout(() => sequenceCooldown = false, 1000);
+
+                                if (literatureIndex >= literatureGuide.length) {
+                                    currentSignState = 'idle';
+                                    setTimeout(() => startSignScene('found_literature'), 500);
+                                }
+                            } else {
+                                if (!sequenceCooldown) {
+                                    triggerError();
+                                    sequenceCooldown = true;
+                                    setTimeout(() => sequenceCooldown = false, 2000);
+                                }
+                            }
+                        }
+
+                        // --- SEQUENCE LOGIC FOR HERE ---
+                        else if (currentSignState === 'awaiting_here_it_is') {
+                            if (sequenceCooldown) { canvasCtx.restore(); return; }
+
+                            const targetLetter = hereGuide[hereIndex].char;
+                            let matched = false;
+
+                            if (targetLetter === 'H' && isSignH(firstHand)) matched = true;
+                            else if (targetLetter === 'E' && isSignE(firstHand)) matched = true;
+                            else if (targetLetter === 'R' && isSignH(firstHand)) matched = true;
+
+                            if (matched) {
+                                hereIndex++;
+                                renderBoxes(hereGuide, hereIndex);
+                                sequenceCooldown = true;
+                                setTimeout(() => sequenceCooldown = false, 1000);
+
+                                if (hereIndex >= hereGuide.length) {
+                                    currentSignState = 'idle';
+                                    setTimeout(() => startSignScene('how_long'), 500);
+                                }
+                            } else {
+                                if (!sequenceCooldown) {
+                                    triggerError();
+                                    sequenceCooldown = true;
+                                    setTimeout(() => sequenceCooldown = false, 2000);
+                                }
+                            }
+                        }
+
+                        // --- SEQUENCE LOGIC FOR 1WEEK ---
+                        else if (currentSignState === 'awaiting_one_week') {
+                            if (sequenceCooldown) { canvasCtx.restore(); return; }
+
+                            const targetLetter = oneWeekGuide[oneWeekIndex].char;
+                            let matched = false;
+
+                            if (targetLetter === '1' && isPointing(firstHand)) matched = true;
+                            else if (targetLetter === 'W' && isSignW(firstHand)) matched = true;
+                            else if (targetLetter === 'E' && isSignE(firstHand)) matched = true;
+                            else if (targetLetter === 'K' && isSignH(firstHand)) matched = true; // K simulated with V
+
+                            if (matched) {
+                                oneWeekIndex++;
+                                renderBoxes(oneWeekGuide, oneWeekIndex);
+                                sequenceCooldown = true;
+                                setTimeout(() => sequenceCooldown = false, 1000);
+
+                                if (oneWeekIndex >= oneWeekGuide.length) {
+                                    currentSignState = 'idle';
+                                    setTimeout(() => startSignScene('checkout_complete'), 500);
+                                }
+                            } else {
+                                if (!sequenceCooldown) {
+                                    triggerError();
+                                    sequenceCooldown = true;
+                                    setTimeout(() => sequenceCooldown = false, 2000);
+                                }
+                            }
+                        }
+                    }
+                    canvasCtx.restore();
+                }
+
+                const hands = new Hands({
+                    locateFile: (file) => {
+                        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                    }
+                });
+                hands.setOptions({
+                    maxNumHands: 2,
+                    modelComplexity: 1,
+                    minDetectionConfidence: 0.5,
+                    minTrackingConfidence: 0.5
+                });
+                hands.onResults(onResults);
+
+                const camera = new Camera(videoElement, {
+                    onFrame: async () => {
+                        await hands.send({ image: videoElement });
+                    },
+                    width: 1280,
+                    height: 720
+                });
+                camera.start();
+
+                startSignScene('hello');
+            }
+
+            function goToPage(pageNumber) {
+                if (isTyping || pageNumber < 1 || pageNumber > storyPages.length) {
+                    return;
+                }
+                currentPage = pageNumber;
+                const newText = storyPages[currentPage - 1];
+
+                startTypewriter(newText, () => {
+                    if (currentPage === 1) {
+                        requestCameraPermission();
+                    }
+                });
+            }
+
+            function animateKeyPress(keyCode) {
+                const keyElement = document.querySelector(`.key[data-code="${keyCode}"]`);
+
+                if (keyElement) {
+                    keyElement.classList.add('active');
+                    setTimeout(() => {
+                        keyElement.classList.remove('active');
+                    }, 200);
+                }
+            }
+
+            goToPage(1);
+
+            window.addEventListener('keydown', (e) => {
+                e.preventDefault();
+
+                if (e.code === 'Escape') {
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                animateKeyPress(e.code);
+            });
+
+            const trackpad = document.getElementById('trackpad');
+            const cursor = document.getElementById('cursor');
+            const cursorSize = 20;
+
+            const trackpadWidth = trackpad.clientWidth;
+            const trackpadHeight = trackpad.clientHeight;
+
+            let cursorX = (trackpadWidth - cursorSize) / 2;
+            let cursorY = (trackpadHeight - cursorSize) / 2;
+            cursor.style.transform = `translate(${cursorX}px, ${cursorY}px)`;
+
+            let lastMouseX = null;
+            let lastMouseY = null;
+            let movementTimer = null;
+
+            document.addEventListener('mousemove', (e) => {
+                if (lastMouseX === null) {
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                    return;
+                }
+
+                if (movementTimer) {
+                    clearTimeout(movementTimer);
+                }
+
+                cursor.classList.add('visible');
+
+                const deltaX = e.clientX - lastMouseX;
+                const deltaY = e.clientY - lastMouseY;
+
+                cursorX += deltaX;
+                cursorY += deltaY;
+
+                const maxX = trackpadWidth - cursorSize;
+                const maxY = trackpadHeight - cursorSize;
+
+                cursorX = Math.max(0, Math.min(maxX, cursorX));
+                cursorY = Math.max(0, Math.min(maxY, cursorY));
+
+                cursor.style.transform = `translate(${cursorX}px, ${cursorY}px)`;
+
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+
+                movementTimer = setTimeout(() => {
+                    cursor.classList.remove('visible');
+
+                    lastMouseX = null;
+                    lastMouseY = null;
+                }, 500);
+            });
+        });
+    </script>
+</body>
+
+</html>
